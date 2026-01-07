@@ -40,33 +40,75 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2. Sidebar Configuration (UPDATED)
+# --- TEMPLATES DATA (The "Best Selected" Examples) ---
+faang_template = """
+**[NAME]** [City, State] | [Phone] | [Email] | [LinkedIn] | [GitHub]
+
+**SKILLS**
+* **Languages:** Python, SQL, C++, Java
+* **Frameworks:** TensorFlow, PyTorch, Streamlit, Flask
+* **Tools:** Docker, Kubernetes, AWS (EC2, S3), Git
+
+**EXPERIENCE**
+**Google (Software Engineer Intern)** | *May 2024 - Aug 2024*
+* Optimized data pipeline latency by **40%** by rewriting legacy SQL queries into PySpark jobs, handling **5TB+** of daily logs.
+* Implemented a BERT-based sentiment analysis model for user feedback, increasing triage efficiency by **25%**.
+
+**STARTUP INC (Data Analyst)** | *Jan 2023 - April 2024*
+* Built an automated dashboard using Power BI that saved the sales team **10 hours/week** of manual reporting.
+* Conducted A/B testing on landing pages, leading to a **15% increase** in conversion rates.
+
+**PROJECTS**
+**Smart ATS** (Python, Gemini API)
+* Built an AI-powered resume optimizer that processed **500+ resumes**, providing real-time feedback and scoring.
+"""
+
+fresher_template = """
+**[NAME]** [Email] | [LinkedIn] | [Portfolio Link]
+
+**EDUCATION**
+**B.Tech Computer Science**, [University Name] | *CGPA: 9.2/10* | *2022 - 2026*
+
+**PROJECTS**
+**E-Commerce Recommendation System** (Python, ML)
+* Developed a collaborative filtering recommendation engine using the MovieLens dataset.
+* Achieved **85% accuracy** in predicting user preferences.
+* Deployed the model using Flask and Heroku for real-time inference.
+
+**Personal Finance Tracker** (Flutter, Firebase)
+* Created a mobile app to track daily expenses with visual charts.
+* Implemented Google Auth and Cloud Firestore for secure data storage.
+
+**SKILLS**
+* **Core:** Data Structures (C++), OOPs, DBMS (MySQL)
+* **Web:** HTML, CSS, JavaScript, React.js
+"""
+
+# 2. Sidebar Configuration
 with st.sidebar:
     st.title("⚙️ Smart Configuration")
     
-    # A. Career Stage
-    experience_level = st.selectbox(
-        "Select Career Stage:",
-        ["Fresher (0-2 Years)", "Mid-Level (3-5 Years)", "Senior (5+ Years)"],
-        index=0
-    )
-    
-    # B. Target Region
-    target_region = st.selectbox(
-        "Target Market:",
-        ["India 🇮🇳", "USA 🇺🇸", "Europe 🇪🇺", "Global 🌏"],
-        index=0
-    )
-    
-    # C. Target Company Type (NEW FEATURE)
-    target_company = st.selectbox(
-        "Target Company Type:",
-        ["FAANG / Big Tech (Google, Amazon...)", "Startup / Product Based", "Service / Consulting (TCS, Infosys...)"],
-        index=0
-    )
+    # Filters
+    experience_level = st.selectbox("Career Stage", ["Fresher", "Mid-Level", "Senior"], index=0)
+    target_region = st.selectbox("Target Market", ["India 🇮🇳", "USA 🇺🇸", "Europe 🇪🇺", "Global 🌏"], index=0)
+    target_company = st.selectbox("Target Company", ["FAANG / Big Tech", "Startup / Product", "Service / Consulting"], index=0)
     
     st.divider()
-    st.info(f"✅ **Mode Active:** Auditing for a **{target_company}** role in **{target_region}**.")
+    
+    # --- NEW FEATURE: RESUME TEMPLATES ---
+    st.subheader("📝 Resume Templates")
+    st.write("Need inspiration? View selected examples:")
+    
+    if st.button("👁️ View Best Sample"):
+        if "Fresher" in experience_level:
+            st.info("Here is a Gold Standard **Fresher** Structure:")
+            st.code(fresher_template, language="markdown")
+        elif "FAANG" in target_company:
+            st.info("Here is a Gold Standard **FAANG** Structure:")
+            st.code(faang_template, language="markdown")
+        else:
+            st.info("Here is a Standard Professional Structure:")
+            st.code(faang_template, language="markdown") # Fallback to pro template
 
 st.title("🎓 Smart ATS: Resume Optimizer")
 st.markdown(f"Optimize your resume for **{target_company}** standards.")
@@ -86,35 +128,26 @@ def input_pdf_text(uploaded_file):
         text += page.extract_text()
     return text
 
-# 5. Dynamic Prompt Logic (UPDATED)
+# 5. Dynamic Prompt Logic
 def get_gemini_response(resume_text, jd_text):
     
-    # Logic for Company Types (The "Comparison" Feature)
+    # Logic for Company
     company_instruction = ""
     if "FAANG" in target_company:
-        company_instruction = "Benchmark this resume against **Google/Meta standards**. Look for: 'Scale', 'Optimization', 'Complexity', and 'Data Structures'. Penalize generic project descriptions. The match score should be stricter."
+        company_instruction = "Benchmark against **Google/Meta standards**. Look for: 'Scale', 'Impact', 'Data Structures'. Penalize generic descriptions."
     elif "Startup" in target_company:
-        company_instruction = "Benchmark against **High-Growth Startups**. Look for: 'Speed', 'Building from Scratch', 'End-to-End Ownership', and 'Full Stack' mentality. Penalize overly specialized roles."
+        company_instruction = "Benchmark against **High-Growth Startups**. Look for: 'Speed', 'Ownership', 'Full Stack' mentality."
     elif "Service" in target_company:
-        company_instruction = "Benchmark against **Service/Consulting giants**. Look for: 'Client Handling', 'Business Value', 'Tools Proficiency', and 'Certifications'."
+        company_instruction = "Benchmark against **Service/Consulting giants**. Look for: 'Client Handling', 'Tools Proficiency', 'Certifications'."
 
-    # Logic for Regions
-    region_instruction = ""
-    if "India" in target_region:
-        region_instruction = "Check for standard Indian resume formats. Focus heavily on technical skills, projects, and marks/CGPA (if Fresher)."
-    elif "USA" in target_region:
-        region_instruction = "Strictly check for NO PHOTOS and NO PERSONAL DETAILS (Age, Marital Status). Ensure strict reverse-chronological order and action verbs."
-    elif "Europe" in target_region:
-        region_instruction = "Check for Europass compatibility standards. Ensure language proficiency is explicitly mentioned."
-        
     # Logic for Experience
     experience_instruction = ""
     if "Fresher" in experience_level:
-        experience_instruction = "Since this is a Fresher, be lenient on work experience but strict on Projects, Internships, and Core Concepts (DSA, OOPs). Look for 'Potential'."
+        experience_instruction = "Strictly focus on Projects, Internships, and Core Concepts (DSA, OOPs). Ignore lack of full-time experience."
     elif "Senior" in experience_level:
-        experience_instruction = "Since this is a Senior, ignore university grades. Focus strictly on 'Leadership', 'Revenue Impact', and 'System Design' skills."
+        experience_instruction = "Focus strictly on 'Leadership', 'Revenue Impact', and 'System Design'."
 
-    # The Prompt
+    # Prompt
     prompt = f"""
     Act as a strict Technical Recruiter for a **{target_company}** in **{target_region}**, hiring for a **{experience_level}** role.
     
@@ -123,21 +156,19 @@ def get_gemini_response(resume_text, jd_text):
     
     INSTRUCTIONS:
     1. Evaluate the resume match percentage based on the JD.
-    2. {company_instruction} (CRITICAL: Compare against these specific industry standards).
-    3. {region_instruction}
-    4. {experience_instruction}
-    5. Provide the output in strict JSON format.
+    2. {company_instruction}
+    3. {experience_instruction}
+    4. Provide the output in strict JSON format.
 
     JSON FORMAT:
     {{
         "match_percentage": 0,
         "missing_keywords": ["keyword1", "keyword2"],
-        "profile_summary": "Summary of the candidate...",
+        "profile_summary": "Summary...",
         "actionable_tips": ["tip1", "tip2"],
-        "interview_questions": ["Q1", "Q2", "Q3"]
+        "interview_questions": ["Q1", "Q2"]
     }}
     """
-    
     model = genai.GenerativeModel("gemini-flash-latest") 
     response = model.generate_content(prompt)
     return response.text
@@ -160,7 +191,7 @@ if st.button("Analyze & Coach Me 🚀", type="primary"):
                 resume_text = input_pdf_text(uploaded_file)
                 response_text = get_gemini_response(resume_text, jd_text)
                 
-                # Robust JSON Parsing
+                # Robust Parsing
                 match = re.search(r"\{.*\}", response_text, re.DOTALL)
                 if match:
                     raw_text = match.group(0)
@@ -172,10 +203,9 @@ if st.button("Analyze & Coach Me 🚀", type="primary"):
                 # --- DASHBOARD ---
                 st.divider()
                 
-                # Score & Keywords
+                # Score
                 c1, c2 = st.columns([1, 2])
                 score = data.get("match_percentage", 0)
-                
                 if score >= 80: color = "#4caf50"
                 elif score >= 50: color = "#ff9800"
                 else: color = "#f44336"
@@ -206,44 +236,23 @@ if st.button("Analyze & Coach Me 🚀", type="primary"):
                 st.subheader("📝 Profile Summary")
                 st.write(data.get("profile_summary", "No summary generated."))
 
-                # Tips & Interview
+                # Tips
                 st.divider()
-                c3, c4 = st.columns(2)
-                
-                with c3:
-                    st.subheader("💡 Tips to Improve")
-                    for tip in data.get("actionable_tips", []):
-                        st.info(f"👉 {tip}")
+                st.subheader("💡 Tips to Improve")
+                for tip in data.get("actionable_tips", []):
+                    st.info(f"👉 {tip}")
                         
-                with c4:
-                    st.subheader("🎤 Predicted Interview Questions")
-                    st.write("Based on this JD, be ready for these:")
-                    for q in data.get("interview_questions", []):
-                        st.markdown(f"<div class='interview-q'>{q}</div>", unsafe_allow_html=True)
+                # Interview Qs
+                st.divider()
+                st.subheader("🎤 Predicted Interview Questions")
+                for q in data.get("interview_questions", []):
+                    st.markdown(f"<div class='interview-q'>{q}</div>", unsafe_allow_html=True)
 
                 # Download Report
-                report_text = f"""
-SMART ATS REPORT (Target: {target_company})
---------------------------------------------
-Match Score: {score}%
-Profile Summary: {data.get('profile_summary')}
-Missing Keywords: {', '.join(keywords)}
-
-Actionable Tips:
-{chr(10).join(['- ' + t for t in data.get('actionable_tips', [])])}
-
-Interview Questions:
-{chr(10).join(['- ' + q for q in data.get('interview_questions', [])])}
-"""
-                st.download_button(
-                    label="📥 Download Full Report",
-                    data=report_text,
-                    file_name="ats_report.txt",
-                    mime="text/plain"
-                )
+                report_text = f"SMART ATS REPORT\nScore: {score}%\n\n{data.get('profile_summary')}"
+                st.download_button("📥 Download Report", report_text, "report.txt")
 
             except Exception as e:
                 st.error(f"Error: {e}")
     else:
         st.warning("Please upload both Resume and JD.")
-
