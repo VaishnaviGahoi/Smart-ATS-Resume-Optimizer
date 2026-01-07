@@ -40,50 +40,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- TEMPLATES DATA ---
-faang_template = """
-**[NAME]** [City, State] | [Phone] | [Email] | [LinkedIn] | [GitHub]
-
-**SKILLS**
-* **Languages:** Python, SQL, C++, Java
-* **Frameworks:** TensorFlow, PyTorch, Streamlit, Flask
-* **Tools:** Docker, Kubernetes, AWS (EC2, S3), Git
-
-**EXPERIENCE**
-**Google (Software Engineer Intern)** | *May 2024 - Aug 2024*
-* Optimized data pipeline latency by **40%** by rewriting legacy SQL queries into PySpark jobs, handling **5TB+** of daily logs.
-* Implemented a BERT-based sentiment analysis model for user feedback, increasing triage efficiency by **25%**.
-
-**STARTUP INC (Data Analyst)** | *Jan 2023 - April 2024*
-* Built an automated dashboard using Power BI that saved the sales team **10 hours/week** of manual reporting.
-* Conducted A/B testing on landing pages, leading to a **15% increase** in conversion rates.
-
-**PROJECTS**
-**Smart ATS** (Python, Gemini API)
-* Built an AI-powered resume optimizer that processed **500+ resumes**, providing real-time feedback and scoring.
-"""
-
-fresher_template = """
-**[NAME]** [Email] | [LinkedIn] | [Portfolio Link]
-
-**EDUCATION**
-**B.Tech Computer Science**, [University Name] | *CGPA: 9.2/10* | *2022 - 2026*
-
-**PROJECTS**
-**E-Commerce Recommendation System** (Python, ML)
-* Developed a collaborative filtering recommendation engine using the MovieLens dataset.
-* Achieved **85% accuracy** in predicting user preferences.
-* Deployed the model using Flask and Heroku for real-time inference.
-
-**Personal Finance Tracker** (Flutter, Firebase)
-* Created a mobile app to track daily expenses with visual charts.
-* Implemented Google Auth and Cloud Firestore for secure data storage.
-
-**SKILLS**
-* **Core:** Data Structures (C++), OOPs, DBMS (MySQL)
-* **Web:** HTML, CSS, JavaScript, React.js
-"""
-
 # 2. Sidebar Configuration
 with st.sidebar:
     st.title("⚙️ Smart Configuration")
@@ -94,40 +50,7 @@ with st.sidebar:
     target_company = st.selectbox("Target Company", ["FAANG / Big Tech", "Startup / Product", "Service / Consulting"], index=0)
     
     st.divider()
-    
-    # --- TEMPLATES SECTION (UPDATED UI) ---
-    st.subheader("📝 Resume Templates")
-    
-    # Logic to select the right template
-    if "Fresher" in experience_level:
-        active_template = fresher_template
-        label = "Fresher Template"
-    elif "FAANG" in target_company:
-        active_template = faang_template
-        label = "FAANG Template"
-    else:
-        active_template = faang_template
-        label = "Professional Template"
-
-    # THE UI FIX: Expander + Tabs
-    with st.expander(f"👁️ View {label}"):
-        tab1, tab2 = st.tabs(["📄 Preview", "💻 Raw Code"])
-        
-        with tab1:
-            st.markdown("#### Visual Preview")
-            st.markdown(active_template) # Renders it nicely
-            
-        with tab2:
-            st.caption("Copy this into your editor:")
-            st.code(active_template, language="markdown") # Shows code for copying
-        
-        # Download Button (Clean & Professional)
-        st.download_button(
-            label=f"📥 Download {label} (.txt)",
-            data=active_template,
-            file_name=f"{label.replace(' ', '_')}.txt",
-            mime="text/plain"
-        )
+    st.info(f"✅ **Mode Active:** Auditing for a **{target_company}** role in **{target_region}**.")
 
 st.title("🎓 Smart ATS: Resume Optimizer")
 st.markdown(f"Optimize your resume for **{target_company}** standards.")
@@ -189,6 +112,7 @@ def get_gemini_response(resume_text, jd_text):
     }}
     """
     
+    # Using the stable Flash model
     model = genai.GenerativeModel("gemini-flash-latest") 
     response = model.generate_content(prompt)
     return response.text
