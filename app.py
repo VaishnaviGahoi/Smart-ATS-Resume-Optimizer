@@ -40,7 +40,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- TEMPLATES DATA (The "Best Selected" Examples) ---
+# --- TEMPLATES DATA ---
 faang_template = """
 **[NAME]** [City, State] | [Phone] | [Email] | [LinkedIn] | [GitHub]
 
@@ -95,20 +95,39 @@ with st.sidebar:
     
     st.divider()
     
-    # --- NEW FEATURE: RESUME TEMPLATES ---
+    # --- TEMPLATES SECTION (UPDATED UI) ---
     st.subheader("📝 Resume Templates")
-    st.write("Need inspiration? View selected examples:")
     
-    if st.button("👁️ View Best Sample"):
-        if "Fresher" in experience_level:
-            st.info("Here is a Gold Standard **Fresher** Structure:")
-            st.code(fresher_template, language="markdown")
-        elif "FAANG" in target_company:
-            st.info("Here is a Gold Standard **FAANG** Structure:")
-            st.code(faang_template, language="markdown")
-        else:
-            st.info("Here is a Standard Professional Structure:")
-            st.code(faang_template, language="markdown") # Fallback to pro template
+    # Logic to select the right template
+    if "Fresher" in experience_level:
+        active_template = fresher_template
+        label = "Fresher Template"
+    elif "FAANG" in target_company:
+        active_template = faang_template
+        label = "FAANG Template"
+    else:
+        active_template = faang_template
+        label = "Professional Template"
+
+    # THE UI FIX: Expander + Tabs
+    with st.expander(f"👁️ View {label}"):
+        tab1, tab2 = st.tabs(["📄 Preview", "💻 Raw Code"])
+        
+        with tab1:
+            st.markdown("#### Visual Preview")
+            st.markdown(active_template) # Renders it nicely
+            
+        with tab2:
+            st.caption("Copy this into your editor:")
+            st.code(active_template, language="markdown") # Shows code for copying
+        
+        # Download Button (Clean & Professional)
+        st.download_button(
+            label=f"📥 Download {label} (.txt)",
+            data=active_template,
+            file_name=f"{label.replace(' ', '_')}.txt",
+            mime="text/plain"
+        )
 
 st.title("🎓 Smart ATS: Resume Optimizer")
 st.markdown(f"Optimize your resume for **{target_company}** standards.")
@@ -169,6 +188,7 @@ def get_gemini_response(resume_text, jd_text):
         "interview_questions": ["Q1", "Q2"]
     }}
     """
+    
     model = genai.GenerativeModel("gemini-flash-latest") 
     response = model.generate_content(prompt)
     return response.text
