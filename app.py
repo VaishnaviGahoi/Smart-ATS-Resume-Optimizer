@@ -2,6 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 import PyPDF2 as pdf
 import json
+import re  # Added for robust JSON parsing
 
 # 1. Page Config
 st.set_page_config(page_title="Smart ATS: V2", page_icon="🎓", layout="wide")
@@ -119,8 +120,8 @@ def get_gemini_response(resume_text, jd_text):
     }}
     """
     
-    # FIXED LINE: Using the specific Flash model which is most stable
-    model = genai.GenerativeModel("gemini-flash-latest") 
+    # Using the specific Flash model which is most stable
+    model = genai.GenerativeModel("gemini-1.5-flash") 
     response = model.generate_content(prompt)
     return response.text
 
@@ -142,9 +143,15 @@ if st.button("Analyze & Coach Me 🚀", type="primary"):
                 resume_text = input_pdf_text(uploaded_file)
                 response_text = get_gemini_response(resume_text, jd_text)
                 
-                # Parse JSON
-                raw_text = response_text.strip().replace("```json", "").replace("```", "")
-                data = json.loads(raw_text)
+                # --- NEW: Robust JSON Parsing ---
+                # This fixes the crash if Gemini adds extra text before/after the JSON
+                match = re.search(r"\{.*\}", response_text, re.DOTALL)
+                if match:
+                    raw_text = match.group(0)
+                    data = json.loads(raw_text)
+                else:
+                    st.error("AI output format error. Please try again.")
+                    st.stop()
                 
                 # --- DASHBOARD ---
                 st.divider()
@@ -178,6 +185,11 @@ if st.button("Analyze & Coach Me 🚀", type="primary"):
                     else:
                         st.success("No critical gaps found!")
 
+                # --- NEW: Profile Summary ---
+                st.divider()
+                st.subheader("📝 Profile Summary")
+                st.write(data.get("profile_summary", "No summary generated."))
+
                 # Tips & Interview
                 st.divider()
                 c3, c4 = st.columns(2)
@@ -193,8 +205,28 @@ if st.button("Analyze & Coach Me 🚀", type="primary"):
                     for q in data.get("interview_questions", []):
                         st.markdown(f"<div class='interview-q'>{q}</div>", unsafe_allow_html=True)
 
+                # --- NEW: Download Report ---
+                report_text = f"""
+SMART ATS REPORT
+----------------
+Match Score: {score}%
+Profile Summary: {data.get('profile_summary')}
+Missing Keywords: {', '.join(keywords)}
+
+Actionable Tips:
+{chr(10).join(['- ' + t for t in data.get('actionable_tips', [])])}
+
+Interview Questions:
+{chr(10).join(['- ' + q for q in data.get('interview_questions', [])])}
+"""
+                st.download_button(
+                    label="📥 Download Full Report",
+                    data=report_text,
+                    file_name="ats_report.txt",
+                    mime="text/plain"
+                )
+
             except Exception as e:
                 st.error(f"Error: {e}")
     else:
         st.warning("Please upload both Resume and JD.")
-
