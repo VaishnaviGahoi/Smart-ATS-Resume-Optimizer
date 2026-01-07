@@ -120,7 +120,8 @@ def get_gemini_response(resume_text, jd_text):
     }}
     """
     
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    # FIXED LINE: Switched to 'gemini-pro' which is universally available
+    model = genai.GenerativeModel("gemini-pro") 
     response = model.generate_content(prompt)
     return response.text
 
