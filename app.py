@@ -4,56 +4,73 @@ import PyPDF2 as pdf
 import json
 
 # 1. Page Config
-st.set_page_config(page_title="Smart ATS: Career Coach", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Smart ATS: V2", page_icon="🎓", layout="wide")
 
-# Custom CSS (FIXED COLORS)
+# Custom CSS
 st.markdown("""
 <style>
-    /* 1. Missing Keyword Tags (Dark Background + Gold Text) */
     .keyword-tag {
         display: inline-block;
         padding: 5px 10px;
         margin: 5px;
-        background-color: #1e1e1e; /* Dark Grey */
-        color: #ffb700; /* Gold/Yellow Text */
+        background-color: #1e1e1e;
+        color: #ffb700;
         border: 1px solid #ffb700;
         border-radius: 15px;
         font-weight: bold;
     }
-    
-    /* 2. Score Card */
     .score-card {
         text-align: center;
         padding: 20px;
         border-radius: 10px;
-        background-color: #262730; /* Matches Streamlit Dark Mode */
+        background-color: #262730;
         border: 1px solid #41444e;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
-    
-    /* 3. Interview Question Box (FIXED: Dark Background + White Text) */
     .interview-q {
-        background-color: #0e1117; /* Very Dark Background */
-        color: #ffffff; /* FORCE WHITE TEXT */
+        background-color: #0e1117;
+        color: #ffffff;
         padding: 15px;
         border-radius: 8px;
         margin-bottom: 12px;
-        border-left: 5px solid #00d4ff; /* Cyan Neon Accent */
+        border-left: 5px solid #00d4ff;
         border: 1px solid #303030;
     }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🎓 Smart ATS: Resume Optimizer & Coach")
-st.markdown("Optimize your resume, get **study resources**, and prepare for the **interview**.")
+# 2. Sidebar Configuration (THE NEW FEATURE)
+with st.sidebar:
+    st.title("⚙️ Smart Configuration")
+    st.markdown("Tailor the ATS for your specific goals.")
+    
+    # A. Career Stage
+    experience_level = st.selectbox(
+        "Select Career Stage:",
+        ["Fresher (0-2 Years)", "Mid-Level (3-5 Years)", "Senior (5+ Years)"],
+        index=0
+    )
+    
+    # B. Target Region
+    target_region = st.selectbox(
+        "Target Market:",
+        ["India 🇮🇳", "USA 🇺🇸", "Europe 🇪🇺", "Global 🌏"],
+        index=0
+    )
+    
+    st.divider()
+    st.info(f"✅ **Mode Active:** Analyzing for a **{experience_level}** role in **{target_region}**.")
 
-# 2. Setup Gemini
+st.title("🎓 Smart ATS: Resume Optimizer")
+st.markdown(f"Optimize your resume for **{target_region}** standards.")
+
+# 3. Setup Gemini
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 else:
-    st.error("API Key not found.")
+    st.error("API Key not found. Please add it to secrets.toml")
 
-# 3. Text Extraction
+# 4. Text Extraction
 def input_pdf_text(uploaded_file):
     reader = pdf.PdfReader(uploaded_file)
     text = ""
@@ -62,31 +79,52 @@ def input_pdf_text(uploaded_file):
         text += page.extract_text()
     return text
 
-# 4. The "Career Coach" Prompt
-sys_instruction = """
-You are a Career Coach & Technical Recruiter. 
-Analyze the Resume against the Job Description (JD).
+# 5. Dynamic Prompt Logic
+def get_gemini_response(resume_text, jd_text):
+    # Logic for Regions
+    region_instruction = ""
+    if "India" in target_region:
+        region_instruction = "Check for standard Indian resume formats. Focus heavily on technical skills, projects, and marks/CGPA (if Fresher)."
+    elif "USA" in target_region:
+        region_instruction = "Strictly check for NO PHOTOS and NO PERSONAL DETAILS (Age, Marital Status). Ensure strict reverse-chronological order and action verbs."
+    elif "Europe" in target_region:
+        region_instruction = "Check for Europass compatibility standards. Ensure language proficiency is explicitly mentioned."
+        
+    # Logic for Experience
+    experience_instruction = ""
+    if "Fresher" in experience_level:
+        experience_instruction = "Since this is a Fresher, be lenient on work experience but strict on Projects, Internships, and Core Concepts (DSA, OOPs). Look for 'Potential'."
+    elif "Senior" in experience_level:
+        experience_instruction = "Since this is a Senior, ignore university grades. Focus strictly on 'Leadership', 'Revenue Impact', and 'System Design' skills."
 
-Output purely in this JSON format:
-{
-    "match_percentage": 0,
-    "missing_keywords": ["keyword1", "keyword2"],
-    "profile_summary": "...",
-    "actionable_tips": ["tip1", "tip2"],
-    "interview_questions": [
-        "Question 1 based on JD requirements?",
-        "Question 2 based on Resume gaps?",
-        "Question 3 technical deep dive?"
-    ]
-}
-"""
+    # The Prompt
+    prompt = f"""
+    Act as a strict Technical Recruiter for the **{target_region}** market, hiring for a **{experience_level}** role.
+    
+    RESUME: {resume_text}
+    JOB DESCRIPTION: {jd_text}
+    
+    INSTRUCTIONS:
+    1. Evaluate the resume match percentage based on the JD.
+    2. {region_instruction}
+    3. {experience_instruction}
+    4. Provide the output in strict JSON format.
 
-model = genai.GenerativeModel(
-    model_name="gemini-flash-latest",
-    system_instruction=sys_instruction
-)
+    JSON FORMAT:
+    {{
+        "match_percentage": 0,
+        "missing_keywords": ["keyword1", "keyword2"],
+        "profile_summary": "Summary of the candidate...",
+        "actionable_tips": ["tip1", "tip2"],
+        "interview_questions": ["Q1", "Q2", "Q3"]
+    }}
+    """
+    
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    response = model.generate_content(prompt)
+    return response.text
 
-# 5. UI Layout
+# 6. UI Layout & Analysis
 col1, col2 = st.columns([1, 1])
 
 with col1:
@@ -97,32 +135,27 @@ with col2:
     st.subheader("2. Your Resume")
     uploaded_file = st.file_uploader("Upload PDF", type="pdf")
 
-# 6. Analysis Logic
 if st.button("Analyze & Coach Me 🚀", type="primary"):
     if uploaded_file is not None and jd_text:
-        with st.spinner("Analyzing profile & generating interview questions..."):
+        with st.spinner(f"Analyzing for {target_region} Market..."):
             try:
-                # Text Processing
                 resume_text = input_pdf_text(uploaded_file)
-                prompt = f"RESUME: {resume_text}\n---\nJOB DESCRIPTION: {jd_text}"
-                
-                response = model.generate_content(prompt)
+                response_text = get_gemini_response(resume_text, jd_text)
                 
                 # Parse JSON
-                raw_text = response.text.strip().replace("```json", "").replace("```", "")
+                raw_text = response_text.strip().replace("```json", "").replace("```", "")
                 data = json.loads(raw_text)
                 
                 # --- DASHBOARD ---
                 st.divider()
                 
-                # A. Score & Keywords
+                # Score & Keywords
                 c1, c2 = st.columns([1, 2])
                 score = data.get("match_percentage", 0)
                 
-                # Color Logic
-                if score >= 80: color = "#4caf50" # Green
-                elif score >= 50: color = "#ff9800" # Orange
-                else: color = "#f44336" # Red
+                if score >= 80: color = "#4caf50"
+                elif score >= 50: color = "#ff9800"
+                else: color = "#f44336"
                 
                 with c1:
                     st.markdown(f"""
@@ -136,26 +169,21 @@ if st.button("Analyze & Coach Me 🚀", type="primary"):
                     st.subheader("⚠️ Missing Skills")
                     keywords = data.get("missing_keywords", [])
                     if keywords:
-                        # Display tags
                         tags_html = "".join([f"<span class='keyword-tag'>{k}</span>" for k in keywords])
                         st.markdown(tags_html, unsafe_allow_html=True)
-                        
-                        # Dynamic Study Links
                         with st.expander("📚 Click to Learn Missing Skills"):
-                            st.write("We found free resources for your gaps:")
                             for k in keywords:
-                                # Smart Google Search Link
                                 link = f"https://www.google.com/search?q=free+course+tutorial+{k.replace(' ', '+')}"
-                                st.markdown(f"👉 **[{k}]({link})** (Search Free Courses)")
+                                st.markdown(f"👉 **[{k}]({link})**")
                     else:
                         st.success("No critical gaps found!")
 
-                # B. Interview Prep
+                # Tips & Interview
                 st.divider()
                 c3, c4 = st.columns(2)
                 
                 with c3:
-                    st.subheader("💡 How to Improve")
+                    st.subheader("💡 Tips to Improve")
                     for tip in data.get("actionable_tips", []):
                         st.info(f"👉 {tip}")
                         
@@ -163,11 +191,9 @@ if st.button("Analyze & Coach Me 🚀", type="primary"):
                     st.subheader("🎤 Predicted Interview Questions")
                     st.write("Based on this JD, be ready for these:")
                     for q in data.get("interview_questions", []):
-                        # Use the new .interview-q class
                         st.markdown(f"<div class='interview-q'>{q}</div>", unsafe_allow_html=True)
 
             except Exception as e:
                 st.error(f"Error: {e}")
-                st.write(response.text) # Fallback
     else:
         st.warning("Please upload both Resume and JD.")
