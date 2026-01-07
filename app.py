@@ -120,7 +120,7 @@ def get_gemini_response(resume_text, jd_text):
     """
     
     # FIXED LINE: Using the specific Flash model which is most stable
-    model = genai.GenerativeModel("gemini-1.5-flash") 
+    model = genai.GenerativeModel("gemini-flash-latest") 
     response = model.generate_content(prompt)
     return response.text
 
@@ -197,3 +197,4 @@ if st.button("Analyze & Coach Me 🚀", type="primary"):
                 st.error(f"Error: {e}")
     else:
         st.warning("Please upload both Resume and JD.")
+
