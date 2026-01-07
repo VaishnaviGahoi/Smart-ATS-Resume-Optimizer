@@ -2,10 +2,10 @@ import streamlit as st
 import google.generativeai as genai
 import PyPDF2 as pdf
 import json
-import re  # Added for robust JSON parsing
+import re
 
 # 1. Page Config
-st.set_page_config(page_title="Smart ATS: V2", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Smart ATS: Pro", page_icon="🎓", layout="wide")
 
 # Custom CSS
 st.markdown("""
@@ -40,7 +40,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2. Sidebar Configuration
+# 2. Sidebar Configuration (UPDATED)
 with st.sidebar:
     st.title("⚙️ Smart Configuration")
     
@@ -58,11 +58,18 @@ with st.sidebar:
         index=0
     )
     
+    # C. Target Company Type (NEW FEATURE)
+    target_company = st.selectbox(
+        "Target Company Type:",
+        ["FAANG / Big Tech (Google, Amazon...)", "Startup / Product Based", "Service / Consulting (TCS, Infosys...)"],
+        index=0
+    )
+    
     st.divider()
-    st.info(f"✅ **Mode Active:** Analyzing for a **{experience_level}** role in **{target_region}**.")
+    st.info(f"✅ **Mode Active:** Auditing for a **{target_company}** role in **{target_region}**.")
 
 st.title("🎓 Smart ATS: Resume Optimizer")
-st.markdown(f"Optimize your resume for **{target_region}** standards.")
+st.markdown(f"Optimize your resume for **{target_company}** standards.")
 
 # 3. Setup Gemini
 if "GEMINI_API_KEY" in st.secrets:
@@ -79,8 +86,18 @@ def input_pdf_text(uploaded_file):
         text += page.extract_text()
     return text
 
-# 5. Dynamic Prompt Logic
+# 5. Dynamic Prompt Logic (UPDATED)
 def get_gemini_response(resume_text, jd_text):
+    
+    # Logic for Company Types (The "Comparison" Feature)
+    company_instruction = ""
+    if "FAANG" in target_company:
+        company_instruction = "Benchmark this resume against **Google/Meta standards**. Look for: 'Scale', 'Optimization', 'Complexity', and 'Data Structures'. Penalize generic project descriptions. The match score should be stricter."
+    elif "Startup" in target_company:
+        company_instruction = "Benchmark against **High-Growth Startups**. Look for: 'Speed', 'Building from Scratch', 'End-to-End Ownership', and 'Full Stack' mentality. Penalize overly specialized roles."
+    elif "Service" in target_company:
+        company_instruction = "Benchmark against **Service/Consulting giants**. Look for: 'Client Handling', 'Business Value', 'Tools Proficiency', and 'Certifications'."
+
     # Logic for Regions
     region_instruction = ""
     if "India" in target_region:
@@ -99,16 +116,17 @@ def get_gemini_response(resume_text, jd_text):
 
     # The Prompt
     prompt = f"""
-    Act as a strict Technical Recruiter for the **{target_region}** market, hiring for a **{experience_level}** role.
+    Act as a strict Technical Recruiter for a **{target_company}** in **{target_region}**, hiring for a **{experience_level}** role.
     
     RESUME: {resume_text}
     JOB DESCRIPTION: {jd_text}
     
     INSTRUCTIONS:
     1. Evaluate the resume match percentage based on the JD.
-    2. {region_instruction}
-    3. {experience_instruction}
-    4. Provide the output in strict JSON format.
+    2. {company_instruction} (CRITICAL: Compare against these specific industry standards).
+    3. {region_instruction}
+    4. {experience_instruction}
+    5. Provide the output in strict JSON format.
 
     JSON FORMAT:
     {{
@@ -120,8 +138,7 @@ def get_gemini_response(resume_text, jd_text):
     }}
     """
     
-    # Using the specific Flash model which is most stable
-    model = genai.GenerativeModel("gemini-flash-latest") 
+    model = genai.GenerativeModel("gemini-1.5-flash") 
     response = model.generate_content(prompt)
     return response.text
 
@@ -138,13 +155,12 @@ with col2:
 
 if st.button("Analyze & Coach Me 🚀", type="primary"):
     if uploaded_file is not None and jd_text:
-        with st.spinner(f"Analyzing for {target_region} Market..."):
+        with st.spinner(f"Auditing against {target_company} Standards..."):
             try:
                 resume_text = input_pdf_text(uploaded_file)
                 response_text = get_gemini_response(resume_text, jd_text)
                 
-                # --- NEW: Robust JSON Parsing ---
-                # This fixes the crash if Gemini adds extra text before/after the JSON
+                # Robust JSON Parsing
                 match = re.search(r"\{.*\}", response_text, re.DOTALL)
                 if match:
                     raw_text = match.group(0)
@@ -185,7 +201,7 @@ if st.button("Analyze & Coach Me 🚀", type="primary"):
                     else:
                         st.success("No critical gaps found!")
 
-                # --- NEW: Profile Summary ---
+                # Profile Summary
                 st.divider()
                 st.subheader("📝 Profile Summary")
                 st.write(data.get("profile_summary", "No summary generated."))
@@ -205,10 +221,10 @@ if st.button("Analyze & Coach Me 🚀", type="primary"):
                     for q in data.get("interview_questions", []):
                         st.markdown(f"<div class='interview-q'>{q}</div>", unsafe_allow_html=True)
 
-                # --- NEW: Download Report ---
+                # Download Report
                 report_text = f"""
-SMART ATS REPORT
-----------------
+SMART ATS REPORT (Target: {target_company})
+--------------------------------------------
 Match Score: {score}%
 Profile Summary: {data.get('profile_summary')}
 Missing Keywords: {', '.join(keywords)}
@@ -230,4 +246,3 @@ Interview Questions:
                 st.error(f"Error: {e}")
     else:
         st.warning("Please upload both Resume and JD.")
-
