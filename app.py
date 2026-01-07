@@ -39,10 +39,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2. Sidebar Configuration (THE NEW FEATURE)
+# 2. Sidebar Configuration
 with st.sidebar:
     st.title("⚙️ Smart Configuration")
-    st.markdown("Tailor the ATS for your specific goals.")
     
     # A. Career Stage
     experience_level = st.selectbox(
@@ -120,8 +119,8 @@ def get_gemini_response(resume_text, jd_text):
     }}
     """
     
-    # FIXED LINE: Switched to 'gemini-pro' which is universally available
-    model = genai.GenerativeModel("gemini-pro") 
+    # FIXED LINE: Using the specific Flash model which is most stable
+    model = genai.GenerativeModel("gemini-1.5-flash") 
     response = model.generate_content(prompt)
     return response.text
 
